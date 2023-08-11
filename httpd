@@ -1,0 +1,110 @@
+[root@localhost vagrant]# cat /usr/lib/systemd/system/httpd.service
+# See httpd.service(8) for more information on using the httpd service.
+
+# Modifying this file in-place is not recommended, because changes
+# will be overwritten during package upgrades.  To customize the
+# behaviour, run "systemctl edit httpd" to create an override unit.
+
+# For example, to pass additional options (such as -D definitions) to
+# the httpd binary at startup, create an override unit (as is done by
+# systemctl edit) and enter the following:
+
+#	[Service]
+#	Environment=OPTIONS=-DMY_DEFINE
+
+[Unit]
+Description=The Apache HTTP Server
+Wants=httpd-init.service
+After=network.target remote-fs.target nss-lookup.target httpd-init.service
+Documentation=man:httpd.service(8)
+
+[Service]
+Type=notify
+Environment=LANG=C
+
+ExecStart=/usr/sbin/httpd $OPTIONS -DFOREGROUND
+ExecReload=/usr/sbin/httpd $OPTIONS -k graceful
+# Send SIGWINCH for graceful stop
+KillSignal=SIGWINCH
+KillMode=mixed
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+[root@localhost vagrant]# nano /usr/lib/systemd/system/httpd.service
+
+[root@localhost vagrant]# cat /usr/lib/systemd/system/httpd.service
+# See httpd.service(8) for more information on using the httpd service.
+
+# Modifying this file in-place is not recommended, because changes
+# will be overwritten during package upgrades.  To customize the
+# behaviour, run "systemctl edit httpd" to create an override unit.
+
+# For example, to pass additional options (such as -D definitions) to
+# the httpd binary at startup, create an override unit (as is done by
+# systemctl edit) and enter the following:
+
+#	[Service]
+#	Environment=OPTIONS=-DMY_DEFINE
+
+[Unit]
+Description=The Apache HTTP Server
+Wants=httpd-init.service
+After=network.target remote-fs.target nss-lookup.target httpd-init.service
+Documentation=man:httpd.service(8)
+
+[Service]
+Type=notify
+Environment=LANG=C
+EnvironmentFile=/etc/sysconfig/httpd-%I
+ExecStart=/usr/sbin/httpd $OPTIONS -DFOREGROUND
+ExecReload=/usr/sbin/httpd $OPTIONS -k graceful
+# Send SIGWINCH for graceful stop
+KillSignal=SIGWINCH
+KillMode=mixed
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
+[root@localhost vagrant]# cat >> /etc/sysconfig/httpd-1 << EOF
+> OPTIONS=-f conf/1.conf
+> EOF
+
+[root@localhost vagrant]# cat /etc/sysconfig/httpd-1
+OPTIONS=-f conf/1.conf
+
+[root@localhost vagrant]# cat >> /etc/sysconfig/httpd-2 << EOF
+OPTIONS=-f conf/2.conf
+EOF
+
+[root@localhost vagrant]# cat /etc/sysconfig/httpd-2
+OPTIONS=-f conf/2.conf
+
+[root@localhost vagrant]# ls /etc/httpd/conf
+httpd.conf  magic
+
+[root@localhost vagrant]# cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/1.conf
+[root@localhost vagrant]# cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/2.conf
+
+[root@localhost vagrant]# ls /etc/httpd/conf
+1.conf  2.conf  httpd.conf  magic
+[root@localhost vagrant]# nano /etc/httpd/conf/1.conf 
+
+[root@localhost vagrant]# nano /etc/httpd/conf/2.conf
+
+[root@localhost vagrant]# netstat -ano | grep 808
+unix  3      [ ]         STREAM     CONNECTED     22808    /run/dbus/system_bus_socket
+
+[root@localhost vagrant]# systemctl start httpd@1
+[root@localhost vagrant]# systemctl start httpd@2
+
+[root@localhost vagrant]# netstat -ano | grep 80
+tcp6       0      0 :::8088                 :::*                    LISTEN      off (0.00/0/0)
+tcp6       0      0 :::8080                 :::*                    LISTEN      off (0.00/0/0)
+unix  3      [ ]         STREAM     CONNECTED     22808    /run/dbus/system_bus_socket
+
+[root@localhost vagrant]# ss -tnulp | grep httpd
+tcp   LISTEN 0      511                *:8088            *:*    users:(("httpd",pid=9419,fd=4),("httpd",pid=9418,fd=4),("httpd",pid=9417,fd=4),("httpd",pid=9416,fd=4),("httpd",pid=9413,fd=4))
+tcp   LISTEN 0      511                *:8080            *:*    users:(("httpd",pid=9643,fd=4),("httpd",pid=9641,fd=4),("httpd",pid=9640,fd=4),("httpd",pid=9639,fd=4),("httpd",pid=9637,fd=4))
+[root@localhost vagrant]#
